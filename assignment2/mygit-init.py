@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+from pathlib import Path
 from mygit_util import ErrorCheck
 
 def usage_check():
@@ -14,9 +15,10 @@ def git_init():
     os.mkdir(".mygit/objects")
     os.mkdir(".mygit/index")
     os.mkdir(".mygit/commits")
-    os.mkdir(".mygit/HEAD")
+    Path(".mygit/HEAD").touch()
     os.mkdir(".mygit/refs")
-    os.mkdir(".mygit/refs/heads")
+    os.mkdir(".mygit/refs/heads/")
+    os.mkdir(".mygit/refs/heads/main")
 
 if __name__ == "__main__":
     usage_check()

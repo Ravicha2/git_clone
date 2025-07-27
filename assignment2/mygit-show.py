@@ -20,20 +20,20 @@ def dissect(arg1):
 def find_file(filename,commit_num):
 
     found = False
-    for commit in range(int(commit_num),-1,-1):
-        snapshot = glob(f".mygit/commits/{commit}/snapshot.txt")[0]
-
-        with open(snapshot,'r') as file_pointers:
+    snapshot = glob(f".mygit/commits/{commit_num}/snapshot.txt")
+    if snapshot:
+        with open(snapshot[0],'r') as file_pointers:
             pointers = file_pointers.readlines()
             for pointer in pointers:
                 pointed_file,hash_val = pointer.split("/")
                 if pointed_file == filename:
                     found = True
-                    hash_val = hash_val
                     break
+    else:
+        return
 
-        if found:
-            return hash_val.strip()
+    if found:
+        return hash_val.strip()
 
     return
 
@@ -55,15 +55,10 @@ def show_file(commit_num,filename):
             print(content.strip())
             return
         else:
-            object_file = glob(f".mygit/commits/*")
-            committed_num = max([int(committed.split("/")[-1]) for committed in object_file])
-            hash_val = find_file(filename,committed_num)
-        if not hash_val:
             print(f"mygit-show: error: '{filename}' not found in index")
             exit(1)
             
-
-    with open(f".mygit/objects/{filename}/{hash_val}") as file:
+    with open(f".mygit/objects/{hash_val}") as file:
         content = file.read()
         print(content.strip())
             

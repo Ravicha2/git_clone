@@ -16,6 +16,7 @@ def usage_check():
     except NameError:
         print("usage: mygit-commit [-a] -m commit-message")
 
+
 def commit_log():
     commit_num = len(glob(".mygit/commits/*"))
     print(f"Committed as commit {commit_num}")
@@ -30,28 +31,56 @@ def commit_log():
         for file in files:
             snapshot.writelines(file+"\n")
 
+def add_to_HEAD(filename, hash):
+    head_path = ".mygit/HEAD"
+    new_version = True
+
+    if os.path.exists(head_path):
+        with open(head_path, 'r') as head:
+            cached = head.readlines()
+            for line in cached:
+                if line.strip() == f"{filename}/{hash}":
+                    new_version = False
+
+    if new_version:
+        with open(head_path, 'r') as head:
+            lines = head.readlines()
+
+        with open(head_path, 'w') as head:
+            for line in lines:
+                if not line.startswith(f"{filename}/"):
+                    head.write(line)
+            head.write(f"{filename}/{hash}\n")
+
+    return new_version
+
+
+
 def commit():
     instage = glob(".mygit/index/*")
     if not instage:
         print("nothing to commit")
         return
-    
-    commit_log()
+    change = False
 
     for file in instage:
-        path = glob(file+"/*")[0]
-        path = path.split("/")
-        hash_val = path[-1]
-        filename = path[-2]
-        if not os.path.isdir(f".mygit/objects/{filename}"):
-            os.mkdir(f".mygit/objects/{filename}")
-        shutil.move(f".mygit/index/{filename}/{hash_val}",f".mygit/objects/{filename}/")
-    
-    for file in instage:
-        shutil.rmtree(file)
-        
+        index = glob(file+"/*")[0]
+        pointer = index.split("/")
+        hash_val = pointer[-1]
+        filename = pointer[-2]
+        new_version = add_to_HEAD(filename,hash_val)
+        if new_version:
+            change = True
+            shutil.copy(index,f".mygit/objects/{hash_val}")
+    if change:
+        commit_log()
+    else:
+        print("nothing to commit")
+        return
 
 
 if __name__ == "__main__":
     usage_check()
+    check = mygit_util.ErrorCheck()
+    check.commit_check()
     commit()
