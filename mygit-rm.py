@@ -72,7 +72,7 @@ if __name__ == "__main__":
         check.rm_check(file)
     for file in files:
         error_check(file,option)
-        if option != "cached":
+        if "cached" not in option:
             remove_from_dir(file)
             remove_from_index(file)
         else:

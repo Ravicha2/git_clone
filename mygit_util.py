@@ -118,10 +118,10 @@ class DiffCheck:
     def get_HEAD_hash(filename:str) -> str:
         with open(".mygit/HEAD","r") as heads:
             lines = heads.readlines()
-            for line in lines:
-                line = line.strip()
-                if line.startswith(filename):
-                    return line.split("/")[-1]
+        for line in lines:
+            line = line.strip()
+            if line.startswith(filename):
+                return line.split("/")[-1]
         return None
     
     @staticmethod
@@ -130,7 +130,7 @@ class DiffCheck:
         index_hash = DiffCheck.get_index_hash(filename)
         head_hash = DiffCheck.get_HEAD_hash(filename)
         state = {"d=i": dir_hash == index_hash,
-                 "d=h": dir_hash == index_hash,
+                 "d=h": dir_hash == head_hash,
                  "i=h": index_hash == head_hash,
                  }
         return state
