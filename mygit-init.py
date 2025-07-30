@@ -2,11 +2,11 @@
 import os
 import sys
 from pathlib import Path
-from mygit_util import ErrorCheck
+import mygit_util
 
 def usage_check():
     if sys.argv[1:]:
-        print("usage: mygit-init")
+        print("usage: mygit-init",file=sys.stderr)
         exit(1)
 
 def git_init():
@@ -22,6 +22,6 @@ def git_init():
 
 if __name__ == "__main__":
     usage_check()
-    check = ErrorCheck()
+    check = mygit_util.ErrorCheck()
     check.init_check()
     git_init()

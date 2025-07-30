@@ -1,2 +1,80 @@
 #!/usr/bin/env python3
 import sys
+import argparse
+import mygit_util
+import os
+import shutil
+
+args = sys.argv[1:]
+
+class MyArgumentParser(argparse.ArgumentParser):
+    def error(self, _):
+        print("usage: mygit-rm [--force] [--cached] <filenames>")
+        sys.exit(1)
+
+def parse_args():
+    parser = MyArgumentParser()
+
+    parser.add_argument('--force', action='store_true', help='Force removal')
+    parser.add_argument('--cached', action='store_true', help='Remove only from index (cached)')
+    parser.add_argument('filenames', nargs='+', help='Files to remove')
+
+    args = parser.parse_args()
+
+    if args.cached:
+        option = 'cached'
+    elif args.force:
+        option = 'force'
+    else:
+        option = 'default'
+
+    return option, args.filenames
+
+def error_check(filename,option):
+    state = mygit_util.DiffCheck.state_check(filename)
+    dir_hash = mygit_util.DiffCheck.get_dir_hash(filename)
+    index_hash = mygit_util.DiffCheck.get_index_hash(filename)
+    head_hash = mygit_util.DiffCheck.get_HEAD_hash(filename)
+
+    """recheck logic, still print wrong output"""
+    if not dir_hash and not state["i=h"] and option != "cached":
+        print(f"mygit-rm: error: '{filename}' has staged changes in the index",file=sys.stderr)
+        exit(1)
+    if not mygit_util.DiffCheck.get_index_hash(filename):
+        print(f"mygit-rm: error: '{filename}' is not in the mygit repository",file=sys.stderr)
+        exit(1)
+    if not state["d=i"] and dir_hash and index_hash:
+        print(f"mygit-rm: error: '{filename}' in the repository is different to the working file",file=sys.stderr)
+        exit(1)
+    if not state["d=i=h"] and dir_hash and index_hash and head_hash:
+        print(f"mygit-rm: error: '{filename}' in index is different to both the working file and the repository")
+
+def remove_from_index(filename):
+    try:
+        shutil.rmtree(f".mygit/index/{filename}")
+    except:
+        print(f"mygit-rm: error: '{filename}' is not in the mygit repository",file=sys.stderr)
+        exit(1)
+
+
+def remove_from_dir(filename):
+    current = mygit_util.DiffCheck.get_dir_hash(filename)
+
+    if not current:
+        print("file not existed") 
+    os.remove(filename)
+
+
+if __name__ == "__main__":
+    option, files = parse_args()
+    check = mygit_util.ErrorCheck()
+    for file in files:
+        check.rm_check(file)
+    for file in files:
+        if option != "force":
+            error_check(file,option)
+        if option != "cached":
+            remove_from_dir(file)
+            remove_from_index(file)
+        else:
+            remove_from_index(file)

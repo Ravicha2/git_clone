@@ -3,14 +3,14 @@ import sys
 import mygit_util
 import os
 from glob import glob
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
 def usage_check():
     if sys.argv[1:]:
-        print("usage: mygit-status")
-        exit (1)
+        print("usage: mygit-status",file=sys.stderr)
+        sys.exit (1)
 
-def get_dir_hash():
+def get_dir_hashes():
     files = glob("*")
     dir_hash = defaultdict(str)
     for file in sorted(files):
@@ -19,7 +19,7 @@ def get_dir_hash():
             dir_hash[file] = hash
     return dir_hash
 
-def get_index_hash(path):
+def get_index_hashes(path):
     files = glob(path)
     paths = [file.split("/")[-2:] for file in files]
     hashes = defaultdict(str)
@@ -28,7 +28,7 @@ def get_index_hash(path):
 
     return hashes
 
-def get_HEAD_hash(path):
+def get_HEAD_hashes(path):
     hashes = defaultdict(str)
     with open(path,"r") as heads:
         heads = [head.strip() for head in heads]
@@ -40,7 +40,8 @@ def get_HEAD_hash(path):
 def print_status(file,status):
     print(f"{file} - {status}")
 
-def build_status_message(*status):
+def build_status_message(*statuses):
+    status = [status for status in statuses if status]
     return (", ").join(status)
 
 def hash_changed(hash1,hash2):
@@ -71,7 +72,7 @@ def eval_status(dir_hashes,index_hashes,head_hashes):
             msg = build_status_message("deleted from index",msg)        
                     
         if existed['index'] and not existed['head']:                                # in index and not in head (010,110,210)
-            msg = build_status_message("add to index",msg)      
+            msg = build_status_message("added to index",msg)      
         
         if existed['dir'] and existed['head'] and not existed['index']:             # in dir and in head and not in index (101,201,)
             if hash_changed(dir_hash, head_hash):       
@@ -103,7 +104,9 @@ def eval_status(dir_hashes,index_hashes,head_hashes):
 
 if __name__ == "__main__":
     usage_check()
-    dir_hashes = get_dir_hash()
-    index_hashes = get_index_hash(".mygit/index/*/*")
-    head_hashes = get_HEAD_hash(".mygit/HEAD")
+    check = mygit_util.ErrorCheck()
+    check.status_check()
+    dir_hashes = get_dir_hashes()
+    index_hashes = get_index_hashes(".mygit/index/*/*")
+    head_hashes = get_HEAD_hashes(".mygit/HEAD")
     eval_status(dir_hashes,index_hashes,head_hashes)
