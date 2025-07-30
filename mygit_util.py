@@ -16,9 +16,12 @@ class ErrorCheck():
         return True
     
     @staticmethod
-    def valid_name(file,operation):
-        if not re.search(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*",file):
-            print(f"{operation}: error: invalid filename '{file}'",file=sys.stderr)
+    def valid_name(file, operation):
+        if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*", file):
+            if operation == "mygit-branch":
+                print(f"{operation}: error: invalid branch name '{file}'", file=sys.stderr)
+            else:
+                print(f"{operation}: error: invalid filename '{file}'", file=sys.stderr)
             return False
         return True
     
@@ -85,6 +88,18 @@ class ErrorCheck():
     def status_check(self):
         if not ErrorCheck.mygit_check("mygit-rm"):
             exit(1)
+
+    def branch_check(self,branch_name):
+        if not ErrorCheck.mygit_check("mygit-branch"):
+            exit(1)
+        if not branch_name:
+            return
+        if branch_name.isdigit():
+            print(f"mygit-branch: error: invalid branch name '{branch_name}'", file=sys.stderr)
+            exit(1)
+        if not ErrorCheck.valid_name(branch_name,"mygit-branch"):
+            exit(1)
+        
 
 class DiffCheck:
     @staticmethod
@@ -166,3 +181,12 @@ class GitUtil:
                     shutil.rmtree(f".mygit/index/{file}")
                 except:
                     print(f"mygit-add: error: can not open '{file}'",file=sys.stderr)
+
+    @staticmethod
+    def save_HEAD():
+        with open(".mygit/HEAD","r") as head:
+            current_file = head.read()
+        current_head = glob(".mygit/refs/branch/*")[0].split("/")[-1]
+
+        with open(f".mygit/refs/heads/{current_head}/HEAD","w") as write_target:
+            write_target.write(current_file)

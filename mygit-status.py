@@ -3,7 +3,6 @@ import sys
 import mygit_util
 import os
 from glob import glob
-from collections import defaultdict
 
 def usage_check():
     if sys.argv[1:]:
@@ -12,7 +11,7 @@ def usage_check():
 
 def get_dir_hashes():
     files = glob("*")
-    dir_hash = defaultdict(str)
+    dir_hash = dict()
     for file in sorted(files):
         if os.path.isfile(file):
             hash = mygit_util.DiffCheck.hashContent(file)
@@ -22,14 +21,14 @@ def get_dir_hashes():
 def get_index_hashes(path):
     files = glob(path)
     paths = [file.split("/")[-2:] for file in files]
-    hashes = defaultdict(str)
+    hashes = dict()
     for path in paths:
         hashes[path[0]] = path[1]
 
     return hashes
 
 def get_HEAD_hashes(path):
-    hashes = defaultdict(str)
+    hashes = dict()
     with open(path,"r") as heads:
         heads = [head.strip() for head in heads]
         for head in heads:

@@ -18,7 +18,10 @@ def git_init():
     Path(".mygit/HEAD").touch()
     os.mkdir(".mygit/refs")
     os.mkdir(".mygit/refs/heads/")
-    os.mkdir(".mygit/refs/heads/main")
+    os.mkdir(".mygit/refs/branch/")
+    Path(".mygit/refs/branch/trunk").touch()
+    os.mkdir(".mygit/refs/heads/trunk")
+    Path(".mygit/refs/heads/trunk/HEAD").touch()
 
 if __name__ == "__main__":
     usage_check()
