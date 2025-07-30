@@ -37,17 +37,24 @@ def error_check(filename,option):
     head_hash = mygit_util.DiffCheck.get_HEAD_hash(filename)
 
     """recheck logic, still print wrong output"""
-    if not dir_hash and not state["i=h"] and option != "cached":
-        print(f"mygit-rm: error: '{filename}' has staged changes in the index",file=sys.stderr)
-        exit(1)
-    if not mygit_util.DiffCheck.get_index_hash(filename):
+    if not state["i=h"] and index_hash:
+        if option != "cached" and state["d=i"]:
+            print(f"mygit-rm: error: '{filename}' has staged changes in the index",file=sys.stderr)
+            exit(1)
+    if not index_hash:
         print(f"mygit-rm: error: '{filename}' is not in the mygit repository",file=sys.stderr)
         exit(1)
-    if not state["d=i"] and dir_hash and index_hash:
+    if not state["d=i"] and state["i=h"] and dir_hash and index_hash and option != "cached":
         print(f"mygit-rm: error: '{filename}' in the repository is different to the working file",file=sys.stderr)
         exit(1)
-    if not state["d=i=h"] and dir_hash and index_hash and head_hash:
-        print(f"mygit-rm: error: '{filename}' in index is different to both the working file and the repository")
+    if not state["d=i"] and not state["i=h"] and dir_hash and index_hash:
+        if option != "cached":
+            print(f"mygit-rm: error: '{filename}' in index is different to both the working file and the repository")
+            exit(1)
+        else:
+            if not head_hash:
+                print(f"mygit-rm: error: '{filename}' in index is different to both the working file and the repository")
+                exit(1)
 
 def remove_from_index(filename):
     try:
@@ -60,9 +67,8 @@ def remove_from_index(filename):
 def remove_from_dir(filename):
     current = mygit_util.DiffCheck.get_dir_hash(filename)
 
-    if not current:
-        print("file not existed") 
-    os.remove(filename)
+    if current:
+        os.remove(filename)
 
 
 if __name__ == "__main__":

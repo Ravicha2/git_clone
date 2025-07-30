@@ -132,7 +132,6 @@ class DiffCheck:
         state = {"d=i": dir_hash == index_hash,
                  "d=h": dir_hash == index_hash,
                  "i=h": index_hash == head_hash,
-                 "d=i=h": (dir_hash == index_hash) and (index_hash == head_hash)
                  }
         return state
     
