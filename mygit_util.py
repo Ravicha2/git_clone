@@ -99,6 +99,10 @@ class ErrorCheck():
             exit(1)
         if not ErrorCheck.valid_name(branch_name,"mygit-branch"):
             exit(1)
+    
+    def checkout_check(self):
+        if not ErrorCheck.mygit_check("mygit-checkout"):
+            exit(1)
         
 
 class DiffCheck:
@@ -130,13 +134,14 @@ class DiffCheck:
         return None
     
     @staticmethod
-    def get_HEAD_hash(filename:str) -> str:
-        with open(".mygit/HEAD","r") as heads:
+    def get_HEAD_hash(filename:str,head=".mygit/HEAD") -> str:
+        with open(head,"r") as heads:
             lines = heads.readlines()
         for line in lines:
             line = line.strip()
-            if line.startswith(filename):
+            if line.startswith(f"{filename}/"):
                 return line.split("/")[-1]
+        
         return None
     
     @staticmethod
