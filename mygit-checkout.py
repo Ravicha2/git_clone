@@ -18,8 +18,6 @@ def error_check(branch_name):
     if not glob(f".mygit/refs/heads/{branch_name}"):
         print(f"mygit-checkout: error: unknown branch '{branch_name}'")
         exit(1)
-    
-    
 
 def detect_conflict(target_branch): # only check tracked file
     conflict = False
@@ -67,15 +65,34 @@ def update_index(target_branch):
         for target_file in target.readlines():
             file, hash_val = target_file.split("/")
             new_index[file] = hash_val.strip()
-    shutil.rmtree(".mygit/index")
-    os.mkdir(".mygit/index")
+    
+    curr_index_filename = {file.split("/")[-1] for file in glob(".mygit/index/*")}
+    new_index_filename = set(new_index.keys())
+
+    file_diff(curr_index_filename,new_index_filename,"index")
+    
     for file,hash_val in new_index.items():
-        os.mkdir(f".mygit/index/{file}")
-        with open(f".mygit/objects/{hash_val}","r") as objects:
-            with open(f".mygit/index/{file}/{hash_val}","w") as index_file:
-                index_file.write(objects.read())
+        head_hash = mygit_util.DiffCheck.get_HEAD_hash(file)
+        if head_hash != hash_val:
+            if os.path.isdir(f".mygit/index/{file}"):
+                shutil.rmtree(f".mygit/index/{file}")
+                os.mkdir(f".mygit/index/{file}")
+            with open(f".mygit/objects/{hash_val}","r") as objects:
+                if not os.path.isdir(f".mygit/index/{file}"):
+                    os.mkdir(f".mygit/index/{file}")
+                with open(f".mygit/index/{file}/{hash_val}","w") as index_file:
+                    index_file.write(objects.read())
 
-
+def file_diff(src_files:set,dst_files:set,location="dir"):
+    to_delete = src_files - dst_files
+    for file in to_delete:
+        if location == "dir":
+            if os.path.exists(file):
+                os.remove(file)
+        if location == "index":
+            if os.path.isdir(f".mygit/index/{file}"):
+                shutil.rmtree(f".mygit/index/{file}")
+            
 
 
 def switch_to(target_branch):
@@ -94,13 +111,13 @@ def switch_to(target_branch):
     with open(".mygit/HEAD","r") as head:
         curr_head_files = {file.strip().split("/")[0] for file in head}
     
-    to_delete = curr_head_files - set(target_files.keys())
-
-    for file in to_delete:
-        if os.path.exists(file):
-            os.remove(file)
+    target_files_keys = set(target_files.keys())
+    file_diff(curr_head_files,target_files_keys)
 
     for name,hash_val in target_files.items():
+        head_hash = mygit_util.DiffCheck.get_HEAD_hash(name)
+        if hash_val == head_hash:
+            continue
         with open(f".mygit/objects/{hash_val}","r") as object:
             with open(name,"w") as dir_file:
                 dir_file.writelines(object.readlines())
