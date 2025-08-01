@@ -3,6 +3,8 @@ import sys
 from glob import glob
 import mygit_util
 import os
+from pathlib import Path
+
 
 args = sys.argv[1:]
 
@@ -13,7 +15,6 @@ def usage_check(args):
 
 def error_check(branch_name):
     if not glob(f".mygit/refs/heads/{branch_name}"):
-        print(glob(f".mygit/refs/branch/{branch_name}"))
         print(f"mygit-checkout: error: unknown branch '{branch_name}'")
         exit(1)
     
@@ -55,17 +56,33 @@ def detect_conflict(target_branch): # only check tracked file
         
 def switch_to(target_branch):
     print(f"Switched to branch '{target_branch}'")
-    target_branch_files = glob(f".mygit/refs/heads/{target_branch}/HEAD")[0]
+    current_head = glob(".mygit/refs/branch/*")[0]
+    os.remove(current_head)
+    Path(f".mygit/refs/branch/{target_branch}").touch()
+    target_head_path = glob(f".mygit/refs/heads/{target_branch}/HEAD")[0]
+    with open(target_head_path, "r") as target_head_file:
+        target_files = {}
+        for line in target_head_file:
+            filename, hash_val = line.strip().split("/")
+            target_files[filename] = hash_val
 
-    with open(target_branch_files,"r") as target_files:
-        targets = {target.strip().split("/")[0]:target.strip().split("/")[1] for target in target_files.readlines()}        # if comback to this later, please make it readable
+    with open(".mygit/HEAD","r") as head:
+        curr_head_files = {file.strip().split("/")[0] for file in head}
     
-    for name,hash in targets.items():
-        with open(f".mygit/objects/{hash}","r") as object:
+    to_delete = curr_head_files - set(target_files.keys())
+
+    for file in to_delete:
+        if os.path.exists(file):
+            os.remove(file)
+
+    for name,hash_val in target_files.items():
+        with open(f".mygit/objects/{hash_val}","r") as object:
             with open(name,"w") as dir_file:
                 dir_file.writelines(object.readlines())
 
-    # not done, need to remove file that in one branch, but not in the other
+    with open(".mygit/HEAD", "w") as head_file:
+        for filename, hash_val in target_files.items():
+            head_file.write(f"{filename}/{hash_val}\n")
 
 if __name__ == "__main__":
     usage_check(args)
