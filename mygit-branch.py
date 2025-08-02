@@ -53,8 +53,12 @@ def create_branch(branch_name):
         new_branch.writelines(head_file)
 
 def delete_branch(branch_name):
+    current_branch = glob(".mygit/refs/branch/*")[0].split("/")[-1]
     if branch_name == "trunk":
         print("mygit-branch: error: can not delete branch 'trunk': default branch")
+        exit(1)
+    if branch_name == current_branch:
+        print(f"mygit-branch: error: can not delete branch '{branch_name}': current branch")
         exit(1)
     shutil.rmtree(f".mygit/refs/heads/{branch_name}")
     print(f"Deleted branch '{branch_name}'")
