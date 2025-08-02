@@ -28,7 +28,7 @@ def autoadd():
     files = [file.split("/")[-1] for file in staged]
     mygit_util.GitUtil.git_add(files)
         
-
+""" record parent commit in commits """
 
 def commit_log():
     commit_num = len(glob(".mygit/commits/*"))
@@ -40,11 +40,24 @@ def commit_log():
 
     with open(f".mygit/commits/{commit_num}/COMMIT_MSG","w") as msg:
         msg.writelines(commit_msg)
+
     with open(f".mygit/commits/{commit_num}/snapshot.txt","w") as snapshot:
-        for file in files:
+        for file in files:     
             snapshot.writelines(file+"\n")
+    try:
+        current_branch = glob(".mygit/refs/branch/*")[0].split("/")[-1]
+        with open(f".mygit/refs/heads/{current_branch}/latest_commit",'r') as previous_commit:
+            parent_commit = previous_commit.read()
+        
+    except:
+        parent_commit = "-1"
+    finally:
+        with open(f".mygit/commits/{commit_num}/parent","w") as parent:
+            parent.writelines(parent_commit)
 
-
+    with open(f".mygit/refs/heads/{current_branch}/latest_commit","w") as latest_commit:
+        latest_commit.write(f"{commit_num}")
+                            
 def add_to_HEAD(filename, hash):
     head_path = ".mygit/HEAD"
     new_version = True
@@ -108,6 +121,7 @@ def commit():
     change = clean_head()
 
     for file in instage:
+        #print(glob(file+"/*"))
         index = glob(file+"/*")[0]
         pointer = index.split("/")
         hash_val = pointer[-1]
