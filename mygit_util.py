@@ -5,6 +5,7 @@ import hashlib
 import sys
 import shutil
 from glob import glob
+from pathlib import Path
 
 class ErrorCheck():
 
@@ -191,14 +192,14 @@ class GitUtil:
     def save_HEAD():
         with open(".mygit/HEAD","r") as head:
             current_file = head.read()
-        current_head = glob(".mygit/refs/branch/*")[0].split("/")[-1]
+        current_head = Path(glob(".mygit/refs/branch/*")[0]).name
 
         with open(f".mygit/refs/heads/{current_head}/HEAD","w") as write_target:
             write_target.write(current_file)
 
     @staticmethod
     def current_node():
-        current_branch = glob(".mygit/refs/branch/*")[0].split("/")[-1]
+        current_branch = Path(glob(".mygit/refs/branch/*")[0]).name
         with open(f".mygit/refs/heads/{current_branch}/latest_commit","r") as current_head:
             node = current_head.read()
         return node
@@ -229,3 +230,30 @@ class GitUtil:
         current_ancestor_lists = GitUtil.ancestors(current, current_ancestor_lists)
         #print(target_ancestor_lists,current_ancestor_lists)
         return max(current_ancestor_lists.intersection(target_ancestor_lists))
+    
+    @staticmethod
+    def find_file(filename,commit_num):
+        found = False
+        snapshot = glob(f".mygit/commits/{commit_num}/snapshot.txt")
+        if snapshot:
+            with open(snapshot[0],'r') as file_pointers:
+                pointers = file_pointers.readlines()
+                for pointer in pointers:
+                    pointed_file,hash_val = pointer.split("/")
+                    #print(pointed_file,filename)
+                    if f"{pointed_file}" == f"{filename}":
+                        found = True
+                        break
+
+        if found:
+            return hash_val.strip()
+
+        return None
+    
+    @staticmethod
+    def cat_file(file,commit):
+        hash_val = GitUtil.find_file(file,commit)
+        if hash_val:
+            with open(f".mygit/objects/{hash_val}") as file:
+                content = file.read()
+                return content.strip()

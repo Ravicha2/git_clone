@@ -21,14 +21,26 @@ def parse_args():
     args = parser.parse_args()
     target = args.target
     msg = args.message
-
     return target, msg
 
+def compare_commit(file,current,target):
+    branching_point = mygit_util.GitUtil.common_ancestor(current,target)
+    #print(file,current,target)
+    original_file = mygit_util.GitUtil.cat_file(file,branching_point)
+    current_file = mygit_util.GitUtil.cat_file(file,current)
+    target_file = mygit_util.GitUtil.cat_file(file,target)
+    print("original file",original_file,sep="\n")
+    print("current branch file",current_file,sep="\n")
+    print("target file",target_file,sep="\n")
 
 
 if __name__ == "__main__":
     target, msg = parse_args()
     current = mygit_util.GitUtil.current_node()
-    branching_point = mygit_util.GitUtil.common_ancestor(target,current)
-    print(branching_point)
+    if not target.isdigit():
+        with open(f".mygit/refs/heads/{target}/latest_commit") as target_head:
+            target = target_head.read()
+    compare_commit(1,current,target)
+    
+    
     

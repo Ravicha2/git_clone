@@ -18,7 +18,7 @@ def error_check(branch_name):
     if not glob(f".mygit/refs/heads/{branch_name}"):
         print(f"mygit-checkout: error: unknown branch '{branch_name}'")
         exit(1)
-    current_branch = glob(".mygit/refs/branch/*")[0].split("/")[-1]
+    current_branch = Path(glob(".mygit/refs/branch/*")[0]).name
     if branch_name == current_branch:
         print(f"Already on '{branch_name}'")
         exit(0)

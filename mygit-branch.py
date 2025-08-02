@@ -15,7 +15,7 @@ class MyArgumentParser(argparse.ArgumentParser):
         sys.exit(1)
         
 def error_check(delete,branch_name):
-    branches = [branch.split("/")[-1] for branch in glob(".mygit/refs/heads/*")]
+    branches = [Path(branch).name for branch in glob(".mygit/refs/heads/*")]
     if not delete:
         if branch_name in branches:
             print(f"mygit-branch: error: branch '{branch_name}' already exists")
@@ -59,7 +59,7 @@ def create_branch(branch_name):
         new_branch.writelines(head_file)
 
 def delete_branch(branch_name):
-    current_branch = glob(".mygit/refs/branch/*")[0].split("/")[-1]
+    current_branch = Path(glob(".mygit/refs/branch/*")[0]).name
     if branch_name == "trunk":
         print("mygit-branch: error: can not delete branch 'trunk': default branch")
         exit(1)

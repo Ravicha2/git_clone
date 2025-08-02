@@ -4,6 +4,7 @@ import os
 import mygit_util
 from glob import glob
 import shutil
+from pathlib import Path
 
 args = sys.argv[1:]
 
@@ -28,8 +29,6 @@ def autoadd():
     files = [file.split("/")[-1] for file in staged]
     mygit_util.GitUtil.git_add(files)
         
-""" record parent commit in commits """
-
 def commit_log():
     commit_num = len(glob(".mygit/commits/*"))
     print(f"Committed as commit {commit_num}")
@@ -45,7 +44,7 @@ def commit_log():
         for file in files:     
             snapshot.writelines(file+"\n")
     
-    current_branch = glob(".mygit/refs/branch/*")[0].split("/")[-1]
+    current_branch = Path(glob(".mygit/refs/branch/*")[0]).name
     with open(f".mygit/refs/heads/{current_branch}/latest_commit",'r') as previous_commit:
         parent_commit = previous_commit.read()
         
@@ -118,7 +117,6 @@ def commit():
     change = clean_head()
 
     for file in instage:
-        #print(glob(file+"/*"))
         index = glob(file+"/*")[0]
         pointer = index.split("/")
         hash_val = pointer[-1]
