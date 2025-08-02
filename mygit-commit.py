@@ -44,16 +44,13 @@ def commit_log():
     with open(f".mygit/commits/{commit_num}/snapshot.txt","w") as snapshot:
         for file in files:     
             snapshot.writelines(file+"\n")
-    try:
-        current_branch = glob(".mygit/refs/branch/*")[0].split("/")[-1]
-        with open(f".mygit/refs/heads/{current_branch}/latest_commit",'r') as previous_commit:
-            parent_commit = previous_commit.read()
+    
+    current_branch = glob(".mygit/refs/branch/*")[0].split("/")[-1]
+    with open(f".mygit/refs/heads/{current_branch}/latest_commit",'r') as previous_commit:
+        parent_commit = previous_commit.read()
         
-    except:
-        parent_commit = "-1"
-    finally:
-        with open(f".mygit/commits/{commit_num}/parent","w") as parent:
-            parent.writelines(parent_commit)
+    with open(f".mygit/commits/{commit_num}/parent","w") as parent:
+        parent.writelines(parent_commit)
 
     with open(f".mygit/refs/heads/{current_branch}/latest_commit","w") as latest_commit:
         latest_commit.write(f"{commit_num}")

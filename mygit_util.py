@@ -195,3 +195,37 @@ class GitUtil:
 
         with open(f".mygit/refs/heads/{current_head}/HEAD","w") as write_target:
             write_target.write(current_file)
+
+    @staticmethod
+    def current_node():
+        current_branch = glob(".mygit/refs/branch/*")[0].split("/")[-1]
+        with open(f".mygit/refs/heads/{current_branch}/latest_commit","r") as current_head:
+            node = current_head.read()
+        return node
+
+
+    @staticmethod
+    def ancestors(commit:int,ancestor_list:set)-> set:
+        try:
+            with open(f".mygit/commits/{commit}/parent") as commit:
+                parent_commit = commit.read()
+        except:
+            print(f"mygit-merge: error: unknown commit '{commit}'")
+            exit(1)
+        ancestor_list.add(parent_commit)
+
+        if int(parent_commit) >= 0:
+            ancestor_list = GitUtil.ancestors(parent_commit,ancestor_list)
+            return ancestor_list
+        else:
+            return ancestor_list
+    
+    @staticmethod
+    def common_ancestor(target, current)-> int:
+        target_ancestor_lists = set(target)
+        current_ancestor_lists = set(current)
+
+        target_ancestor_lists = GitUtil.ancestors(target, target_ancestor_lists)
+        current_ancestor_lists = GitUtil.ancestors(current, current_ancestor_lists)
+        #print(target_ancestor_lists,current_ancestor_lists)
+        return max(current_ancestor_lists.intersection(target_ancestor_lists))

@@ -47,6 +47,12 @@ def create_branch(branch_name):
     mygit_util.GitUtil.save_HEAD()
     os.mkdir(f".mygit/refs/heads/{branch_name}")
     Path(f".mygit/refs/heads/{branch_name}/HEAD").touch()
+    Path(f".mygit/refs/heads/{branch_name}/latest_commit").touch()
+    
+    current = mygit_util.GitUtil.current_node()
+    with open(f".mygit/refs/heads/{branch_name}/latest_commit","w") as latest_commit:
+        latest_commit.write(current)
+
     with open(".mygit/HEAD","r") as head:
         head_file = head.readlines()
     with open(f".mygit/refs/heads/{branch_name}/HEAD","w") as new_branch:
