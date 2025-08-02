@@ -163,13 +163,12 @@ class GitUtil:
             os.mkdir(".mygit/index")
 
         for file in files:
-            if not os.path.isdir(f".mygit/index/{file}"):
-                os.mkdir(f".mygit/index/{file}")
 
             hashedName = DiffCheck.hashContent(file)
-            
 
             if hashedName:
+                if not os.path.isdir(f".mygit/index/{file}"):
+                    os.mkdir(f".mygit/index/{file}")
                 index = f".mygit/index/{file}/{hashedName}"
                 with open(".mygit/HEAD",'r') as cached:
                     heads = cached.readlines()
@@ -184,6 +183,7 @@ class GitUtil:
                 shutil.copy(file,index)
             else:
                 try:
+                    #print(glob(".mygit/index/*"))
                     shutil.rmtree(f".mygit/index/{file}")
                 except:
                     print(f"mygit-add: error: can not open '{file}'",file=sys.stderr)
@@ -257,3 +257,11 @@ class GitUtil:
             with open(f".mygit/objects/{hash_val}") as file:
                 content = file.read()
                 return content.strip()
+    
+    @staticmethod
+    def extract_files(readline:list)-> dict:
+        files = dict()
+        for r in readline:
+            name, hashval = r.strip().split("/")
+            files[name] = hashval
+        return files
