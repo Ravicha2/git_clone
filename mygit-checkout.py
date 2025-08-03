@@ -70,7 +70,7 @@ def update_index(target_branch):
             file, hash_val = target_file.split("/")
             new_index[file] = hash_val.strip()
     
-    curr_index_filename = {file.split("/")[-1] for file in glob(".mygit/index/*")}
+    curr_index_filename = {Path(file).name for file in glob(".mygit/index/*")}
     new_index_filename = set(new_index.keys())
 
     file_diff(curr_index_filename,new_index_filename,"index")
@@ -81,9 +81,11 @@ def update_index(target_branch):
             if os.path.isdir(f".mygit/index/{file}"):
                 shutil.rmtree(f".mygit/index/{file}")
                 os.mkdir(f".mygit/index/{file}")
+
             with open(f".mygit/objects/{hash_val}","r") as objects:
                 if not os.path.isdir(f".mygit/index/{file}"):
                     os.mkdir(f".mygit/index/{file}")
+
                 with open(f".mygit/index/{file}/{hash_val}","w") as index_file:
                     index_file.write(objects.read())
 
@@ -94,8 +96,9 @@ def file_diff(src_files:set,dst_files:set,location="dir"):
             if os.path.exists(file):
                 os.remove(file)
         if location == "index":
-            if os.path.isdir(f".mygit/index/{file}"):
-                shutil.rmtree(f".mygit/index/{file}")
+            if mygit_util.DiffCheck.get_HEAD_hash(file):
+                if os.path.isdir(f".mygit/index/{file}"):
+                    shutil.rmtree(f".mygit/index/{file}")
             
 
 
