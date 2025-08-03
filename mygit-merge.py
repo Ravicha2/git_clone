@@ -79,9 +79,6 @@ def merge_cases(branching_point,current_commit,target_commit):
         #print("Branches Diverged — True Merge Required")
         true_merge(branching_point, current_commit, target_commit)
 
-
-
-
 def merge_record(branching_point, current_commit, target_commit):
     all_files = get_all_files(current_commit,target_commit)
     merging_file = dict()
@@ -135,6 +132,8 @@ def state_check(branching_point, current_commit, target_commit):
 
             if bp_hash == file_hash or bp_hash == merge_version:
                 continue
+            if not bp_hash:
+                continue
             print("mygit-merge: error: can not merge")
             exit(1)
 
@@ -153,7 +152,7 @@ def update_head():
     new_head = []
     for file in glob(".mygit/index/*/*"):
         file = ("/").join(file.split("/")[-2:])
-        new_head.append(file)
+        new_head.append(f"{file}\n")
     with open(".mygit/HEAD","w") as head:
         head.writelines(new_head)
 
@@ -189,10 +188,10 @@ def true_merge(branching_point, current_commit, target_commit):
     with open(f".mygit/commits/{previous_commit}/parent","w") as parent_file:
         parent_file.writelines(parent)
 
-    latest_commit = len(glob(".mygit/commits/*"))
-    current_branch = Path(glob(".mygit/refs/branch/*")).name
+    latest_commit = len(glob(".mygit/commits/*")) - 1
+    current_branch = Path(glob(".mygit/refs/branch/*")[0]).name
     with open(f".mygit/refs/heads/{current_branch}/latest_commit","w") as new_commit:
-        new_commit.write(latest_commit)
+        new_commit.write(f"{latest_commit}")
 
 if __name__ == "__main__":
     target, msg = parse_args()
