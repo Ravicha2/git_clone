@@ -209,17 +209,19 @@ class GitUtil:
     def ancestors(commit:int,ancestor_list:set)-> set:
         try:
             with open(f".mygit/commits/{commit}/parent") as commit:
-                parent_commit = commit.read()
+                parent_commits = commit.readlines()
         except:
             print(f"mygit-merge: error: unknown commit '{commit}'")
             exit(1)
-        ancestor_list.add(parent_commit)
-
-        if int(parent_commit) >= 0:
-            ancestor_list = GitUtil.ancestors(parent_commit,ancestor_list)
-            return ancestor_list
-        else:
-            return ancestor_list
+        for parent in parent_commits:
+            parent = parent.strip()
+            ancestor_list.add(parent)
+            if int(parent) >= 0:
+                ancestor_list = GitUtil.ancestors(parent,ancestor_list)
+            else:
+                return ancestor_list
+            
+        return ancestor_list
     
     @staticmethod
     def common_ancestor(target, current)-> int:
@@ -278,7 +280,6 @@ class GitUtil:
         print(f"Committed as commit {commit_num}")
         os.mkdir(f".mygit/commits/{commit_num}")
 
-        #commit_msg = args[1]
         files = [("/").join(file.split("/")[2:]) for file in glob(".mygit/index/*/*")]
 
         with open(f".mygit/commits/{commit_num}/COMMIT_MSG","w") as msg:

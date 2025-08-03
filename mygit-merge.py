@@ -5,6 +5,7 @@ import mygit_util
 from glob import glob
 from pathlib import Path
 import os
+import shutil
 
 args = sys.argv[1:]
 
@@ -17,12 +18,15 @@ def parse_args():
     parser = MyArgumentParser()
     
     parser.add_argument('target', help='target branch or commit')
-    parser.add_argument('-m', dest='message', required=True, help='merge commit message')
+    parser.add_argument('-m', dest='message', help='merge commit message')
     args = parser.parse_args()
 
     args = parser.parse_args()
     target = args.target
     msg = args.message
+    if not msg:
+        print("mygit-merge: error: empty commit message")
+        exit(1)
     return target, msg
 
 def get_all_files(*commits):
@@ -61,15 +65,17 @@ def merge_cases(branching_point,current_commit,target_commit):
 
     if branching_point == current_commit:
         if target_commit > current_commit:
-            print("Fast Forward Merge Required")
+            #print("Fast Forward Merge Required")
+            FF_merge(branching_point, current_commit, target_commit)
+            print("Fast-forward: no commit created")
     elif branching_point == target_commit:
         if current_commit > target_commit:
             print("Already Merged")
             exit(0)
     else:
-        print("Branches Diverged — True Merge Required")
-        new_head = true_merge(branching_point, current_commit, target_commit)
-        #print(new_head)
+        #print("Branches Diverged — True Merge Required")
+        true_merge(branching_point, current_commit, target_commit)
+
 
 
 def merge_record(branching_point, current_commit, target_commit):
@@ -107,33 +113,75 @@ def state_check(branching_point, current_commit, target_commit):
         if file_hash != merging_file.get(file):
             if not merging_file.get(file):
                 continue
-            
             print("mygit-merge: error: can not merge")
             exit(1)
 
 
+def update_index(new_files):
+    for file,hash_val in new_files.items():
+        if (index_hash := mygit_util.DiffCheck.get_index_hash(file)) != hash_val:
+            if index_hash:
+                shutil.rmtree(f".mygit/index/{file}")
+            os.mkdir(f".mygit/index/{file}")
+            with open(f".mygit/objects/{hash_val}","r") as merge_file:
+                with open(f".mygit/index/{file}/{hash_val}","w") as new_index:
+                    new_index.write(merge_file.read())
+        
+def update_head():
+    new_head = []
+    for file in glob(".mygit/index/*/*"):
+        file = ("/").join(file.split("/")[-2:])
+        new_head.append(file)
+    with open(".mygit/HEAD","w") as head:
+        head.writelines(new_head)
 
+def update_dir():
+    for file in glob(".mygit/index/*/*"):
+        file, hash_val = file.split("/")[-2:]
+        with open(f".mygit/objects/{hash_val}","r") as stored_content:
+            with open(file,"w") as dir_file:
+                dir_file.write(stored_content.read())
 
 
 def FF_merge(branching_point, current_commit, target_commit):
     new_head = merge_record(branching_point,current_commit,target_commit)
+    update_index(new_head)
+    update_head()
+    update_dir()
+    # update snapshot commit
+    with open(f".mygit/commits/{current_commit}/snapshot.txt","w") as snapshot:
+        for file, hash_val in new_head.items():
+            snapshot.writelines(f"{file}/{hash_val}")
+
     return new_head
 
 def true_merge(branching_point, current_commit, target_commit):
     new_head = merge_record(branching_point,current_commit,target_commit)
+    update_index(new_head)
+    update_head()
+    update_dir()
+
+    parent = [f"{current_commit}\n",f"{target_commit}\n"]
+    previous_commit = len(glob(".mygit/commits/*"))
+    mygit_util.GitUtil.commit_log(msg)
+
+    with open(f".mygit/commits/{previous_commit}/parent","w") as parent_file:
+        parent_file.writelines(parent)
+
     return new_head
 
 if __name__ == "__main__":
     target, msg = parse_args()
     current = mygit_util.GitUtil.current_node()
     if not target.isdigit():
-        with open(f".mygit/refs/heads/{target}/latest_commit") as target_head:
-            target = target_head.read()
+        try:
+            with open(f".mygit/refs/heads/{target}/latest_commit") as target_head:
+                target = target_head.read()
+        except:
+            print(f"mygit-merge: error: unknown branch '{target}'")
+            exit(1)
     all_files = get_all_files(current,target)
     branching_point = mygit_util.GitUtil.common_ancestor(current,target)
     compare_commit(all_files,current,target)
     state_check(branching_point,current,target)
     merge_cases(branching_point,current,target)
-    
-    
-    
