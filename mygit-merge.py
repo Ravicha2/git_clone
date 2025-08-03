@@ -65,9 +65,12 @@ def merge_cases(branching_point,current_commit,target_commit):
 
     if branching_point == current_commit:
         if target_commit > current_commit:
-            #print("Fast Forward Merge Required")
-            FF_merge(branching_point, current_commit, target_commit)
             print("Fast-forward: no commit created")
+            FF_merge(branching_point, current_commit, target_commit)
+            current_branch = Path(glob(".mygit/refs/branch/*")[0]).name
+            with open(f".mygit/refs/heads/{current_branch}/latest_commit","w") as latest_commit:
+                latest_commit.write(f"{target_commit}")
+
     elif branching_point == target_commit:
         if current_commit > target_commit:
             print("Already Merged")
@@ -75,6 +78,7 @@ def merge_cases(branching_point,current_commit,target_commit):
     else:
         #print("Branches Diverged — True Merge Required")
         true_merge(branching_point, current_commit, target_commit)
+
 
 
 
@@ -98,20 +102,38 @@ def merge_record(branching_point, current_commit, target_commit):
 
 def state_check(branching_point, current_commit, target_commit):
     merging_file = merge_record(branching_point, current_commit, target_commit)
+    branching_point = int(branching_point)
+    current_commit = int(current_commit)
+    target_commit = int(target_commit)
 
     for file in glob("*"):
         if os.path.isdir(file):
             continue
+
         file_hash = mygit_util.DiffCheck.get_dir_hash(file)
         file = Path(file).name
+        head = mygit_util.DiffCheck.get_HEAD_hash(file)
         state = mygit_util.DiffCheck.state_check(file)
+        merge_version = merging_file.get(file)
+        bp_hash = mygit_util.GitUtil.find_file(branching_point,file)
     
-        if not state["i=h"]:
+        if not state["i=h"] and head:
             print("mygit-merge: error: can not merge: local changes to files")
             exit(1)
 
-        if file_hash != merging_file.get(file):
+        if not head and merge_version and file_hash != merge_version:
+            print("mygit-merge: error: can not merge: local changes to files")
+            exit(1)
+
+        if file_hash != merge_version:
             if not merging_file.get(file):
+                continue
+
+            if branching_point == current_commit:
+                if target_commit > current_commit:
+                    continue # FF merge case
+
+            if bp_hash == file_hash or bp_hash == merge_version:
                 continue
             print("mygit-merge: error: can not merge")
             exit(1)
@@ -153,7 +175,6 @@ def FF_merge(branching_point, current_commit, target_commit):
         for file, hash_val in new_head.items():
             snapshot.writelines(f"{file}/{hash_val}")
 
-    return new_head
 
 def true_merge(branching_point, current_commit, target_commit):
     new_head = merge_record(branching_point,current_commit,target_commit)
@@ -168,7 +189,10 @@ def true_merge(branching_point, current_commit, target_commit):
     with open(f".mygit/commits/{previous_commit}/parent","w") as parent_file:
         parent_file.writelines(parent)
 
-    return new_head
+    latest_commit = len(glob(".mygit/commits/*"))
+    current_branch = Path(glob(".mygit/refs/branch/*")).name
+    with open(f".mygit/refs/heads/{current_branch}/latest_commit","w") as new_commit:
+        new_commit.write(latest_commit)
 
 if __name__ == "__main__":
     target, msg = parse_args()
