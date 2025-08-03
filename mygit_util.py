@@ -265,3 +265,35 @@ class GitUtil:
             name, hashval = r.strip().split("/")
             files[name] = hashval
         return files
+    
+    @staticmethod
+    def copy_to(hash_val,target_path):
+        with open(f".mygit/objects/{hash_val}","r") as obj_file:
+            with open(target_path,"w") as location:
+                location.write(obj_file.read())
+
+    @staticmethod
+    def commit_log(commit_msg):
+        commit_num = len(glob(".mygit/commits/*"))
+        print(f"Committed as commit {commit_num}")
+        os.mkdir(f".mygit/commits/{commit_num}")
+
+        #commit_msg = args[1]
+        files = [("/").join(file.split("/")[2:]) for file in glob(".mygit/index/*/*")]
+
+        with open(f".mygit/commits/{commit_num}/COMMIT_MSG","w") as msg:
+            msg.writelines(commit_msg)
+
+        with open(f".mygit/commits/{commit_num}/snapshot.txt","w") as snapshot:
+            for file in files:     
+                snapshot.writelines(file+"\n")
+        
+        current_branch = Path(glob(".mygit/refs/branch/*")[0]).name
+        with open(f".mygit/refs/heads/{current_branch}/latest_commit",'r') as previous_commit:
+            parent_commit = previous_commit.read()
+            
+        with open(f".mygit/commits/{commit_num}/parent","w") as parent:
+            parent.writelines(parent_commit)
+
+        with open(f".mygit/refs/heads/{current_branch}/latest_commit","w") as latest_commit:
+            latest_commit.write(f"{commit_num}")

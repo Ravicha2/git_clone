@@ -34,23 +34,41 @@ def get_all_files(*commits):
 
 def compare_commit(file,current,target):
     branching_point = mygit_util.GitUtil.common_ancestor(current,target)
-    #print(file,current,target)
-    original_file = mygit_util.GitUtil.cat_file(file,branching_point)
-    current_file = mygit_util.GitUtil.cat_file(file,current)
-    target_file = mygit_util.GitUtil.cat_file(file,target)
-    if original_file or current_file or target_file:
-        print(f"original {file}",original_file,sep="\n")
-        print(f"current branch {file}",current_file,sep="\n")
-        print(f"target {file}",target_file,sep="\n")
-
-def merge_cases(current,target):
-    branching_point = int(mygit_util.GitUtil.common_ancestor(current,target))
-    if branching_point == current and target > current:
-        print("Fast Forward")
-    if branching_point == target and current > target:
-        print("Already Merged")
+    original_file = mygit_util.GitUtil.find_file(file,branching_point)
+    current_file = mygit_util.GitUtil.find_file(file,current)
+    target_file = mygit_util.GitUtil.find_file(file,target)
+    if current_file == target_file:
+        print("Merge Compatible: Select one")
+    else:
+        if original_file == current_file:
+            print("Merge Compatible: target file changed")
+        elif original_file == target_file:
+            print("Merge Compatible: Current file changed")
+        else:
+            print("Merge incompatible: both file changed")
+            exit(1)
     
 
+def merge_cases(current_commit,target_commit):
+    branching_point = int(mygit_util.GitUtil.common_ancestor(current_commit,target_commit))
+    current_commit = int(current_commit)
+    target_commit = int(target_commit)
+
+    if branching_point == current_commit:
+        if target_commit > current_commit:
+            print("Fast Forward Merge Required")
+    elif branching_point == target_commit:
+        if current_commit > target_commit:
+            print("Already Merged")
+            exit(0)
+    else:
+        print("Branches Diverged — True Merge Required")
+
+def FF_merge():
+    pass
+
+def true_merge():
+    pass
 
 if __name__ == "__main__":
     target, msg = parse_args()
@@ -59,6 +77,7 @@ if __name__ == "__main__":
         with open(f".mygit/refs/heads/{target}/latest_commit") as target_head:
             target = target_head.read()
     all_files = get_all_files(current,target)
+    merge_cases(current,target)
     for file in all_files:
         compare_commit(file,current,target)
     
