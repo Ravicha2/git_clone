@@ -17,35 +17,16 @@ def dissect(arg1):
     filename = arg1[index+1:]
     return commit_num, filename
 
-def find_file(filename,commit_num):
-
-    found = False
-    snapshot = glob(f".mygit/commits/{commit_num}/snapshot.txt")
-    if snapshot:
-        with open(snapshot[0],'r') as file_pointers:
-            pointers = file_pointers.readlines()
-            for pointer in pointers:
-                pointed_file,hash_val = pointer.split("/")
-                if pointed_file == filename:
-                    found = True
-                    break
-    else:
-        return
-
-    if found:
-        return hash_val.strip()
-
-    return
-
-
 def show_file(commit_num,filename):
     if commit_num:
-        hash_val = find_file(filename,commit_num)
+        hash_val = mygit_util.GitUtil.find_file(filename,commit_num)
 
         if not hash_val:
             print(f"mygit-show: error: '{filename}' not found in commit {commit_num}")
             exit(1)
 
+        print(mygit_util.GitUtil.cat_file(filename,commit_num))
+        
     else:
         index_file = glob(f".mygit/index/{filename}/*")
 
@@ -58,9 +39,6 @@ def show_file(commit_num,filename):
             print(f"mygit-show: error: '{filename}' not found in index")
             exit(1)
             
-    with open(f".mygit/objects/{hash_val}") as file:
-        content = file.read()
-        print(content.strip())
             
 if __name__ == "__main__":
     usage_check()

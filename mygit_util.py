@@ -5,6 +5,7 @@ import hashlib
 import sys
 import shutil
 from glob import glob
+from pathlib import Path
 
 class ErrorCheck():
 
@@ -16,9 +17,12 @@ class ErrorCheck():
         return True
     
     @staticmethod
-    def valid_name(file,operation):
-        if not re.search(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*",file):
-            print(f"{operation}: error: invalid filename '{file}'",file=sys.stderr)
+    def valid_name(file, operation):
+        if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*", file):
+            if operation == "mygit-branch":
+                print(f"{operation}: error: invalid branch name '{file}'", file=sys.stderr)
+            else:
+                print(f"{operation}: error: invalid filename '{file}'", file=sys.stderr)
             return False
         return True
     
@@ -86,6 +90,22 @@ class ErrorCheck():
         if not ErrorCheck.mygit_check("mygit-rm"):
             exit(1)
 
+    def branch_check(self,branch_name):
+        if not ErrorCheck.mygit_check("mygit-branch"):
+            exit(1)
+        if not branch_name:
+            return
+        if branch_name.isdigit():
+            print(f"mygit-branch: error: invalid branch name '{branch_name}'", file=sys.stderr)
+            exit(1)
+        if not ErrorCheck.valid_name(branch_name,"mygit-branch"):
+            exit(1)
+    
+    def checkout_check(self):
+        if not ErrorCheck.mygit_check("mygit-checkout"):
+            exit(1)
+        
+
 class DiffCheck:
     @staticmethod
     def hashContent(file):
@@ -115,13 +135,14 @@ class DiffCheck:
         return None
     
     @staticmethod
-    def get_HEAD_hash(filename:str) -> str:
-        with open(".mygit/HEAD","r") as heads:
+    def get_HEAD_hash(filename:str,head=".mygit/HEAD") -> str:
+        with open(head,"r") as heads:
             lines = heads.readlines()
         for line in lines:
             line = line.strip()
-            if line.startswith(filename):
+            if line.startswith(f"{filename}/"):
                 return line.split("/")[-1]
+        
         return None
     
     @staticmethod
@@ -142,13 +163,12 @@ class GitUtil:
             os.mkdir(".mygit/index")
 
         for file in files:
-            if not os.path.isdir(f".mygit/index/{file}"):
-                os.mkdir(f".mygit/index/{file}")
 
             hashedName = DiffCheck.hashContent(file)
-            
 
             if hashedName:
+                if not os.path.isdir(f".mygit/index/{file}"):
+                    os.mkdir(f".mygit/index/{file}")
                 index = f".mygit/index/{file}/{hashedName}"
                 with open(".mygit/HEAD",'r') as cached:
                     heads = cached.readlines()
@@ -163,6 +183,118 @@ class GitUtil:
                 shutil.copy(file,index)
             else:
                 try:
+                    #print(glob(".mygit/index/*"))
                     shutil.rmtree(f".mygit/index/{file}")
                 except:
                     print(f"mygit-add: error: can not open '{file}'",file=sys.stderr)
+
+    @staticmethod
+    def save_HEAD():
+        with open(".mygit/HEAD","r") as head:
+            current_file = head.read()
+        current_head = Path(glob(".mygit/refs/branch/*")[0]).name
+
+        with open(f".mygit/refs/heads/{current_head}/HEAD","w") as write_target:
+            write_target.write(current_file)
+
+    @staticmethod
+    def current_node():
+        current_branch = Path(glob(".mygit/refs/branch/*")[0]).name
+        with open(f".mygit/refs/heads/{current_branch}/latest_commit","r") as current_head:
+            node = current_head.read()
+        return node
+
+
+    @staticmethod
+    def ancestors(commit:int,ancestor_list:set)-> set:
+        try:
+            with open(f".mygit/commits/{commit}/parent") as commit:
+                parent_commits = commit.readlines()
+        except:
+            print(f"mygit-merge: error: unknown commit '{commit}'")
+            exit(1)
+        for parent in parent_commits:
+            parent = parent.strip()
+            ancestor_list.add(parent)
+            if int(parent) >= 0:
+                ancestor_list = GitUtil.ancestors(parent,ancestor_list)
+            else:
+                return ancestor_list
+            
+        return ancestor_list
+    
+    @staticmethod
+    def common_ancestor(target, current)-> int:
+        target_ancestor_lists = set(target)
+        current_ancestor_lists = set(current)
+
+        target_ancestor_lists = GitUtil.ancestors(target, target_ancestor_lists)
+        current_ancestor_lists = GitUtil.ancestors(current, current_ancestor_lists)
+        #print(target_ancestor_lists,current_ancestor_lists)
+        return max(current_ancestor_lists.intersection(target_ancestor_lists))
+    
+    @staticmethod
+    def find_file(filename,commit_num):
+        found = False
+        snapshot = glob(f".mygit/commits/{commit_num}/snapshot.txt")
+        if snapshot:
+            with open(snapshot[0],'r') as file_pointers:
+                pointers = file_pointers.readlines()
+                for pointer in pointers:
+                    pointed_file,hash_val = pointer.split("/")
+                    #print(pointed_file,filename)
+                    if f"{pointed_file}" == f"{filename}":
+                        found = True
+                        break
+
+        if found:
+            return hash_val.strip()
+
+        return None
+    
+    @staticmethod
+    def cat_file(file,commit):
+        hash_val = GitUtil.find_file(file,commit)
+        if hash_val:
+            with open(f".mygit/objects/{hash_val}") as file:
+                content = file.read()
+                return content.strip()
+    
+    @staticmethod
+    def extract_files(readline:list)-> dict:
+        files = dict()
+        for r in readline:
+            name, hashval = r.strip().split("/")
+            files[name] = hashval
+        return files
+    
+    @staticmethod
+    def copy_to(hash_val,target_path):
+        with open(f".mygit/objects/{hash_val}","r") as obj_file:
+            with open(target_path,"w") as location:
+                location.write(obj_file.read())
+
+    @staticmethod
+    def commit_log(commit_msg):
+        commit_num = len(glob(".mygit/commits/*"))
+        print(f"Committed as commit {commit_num}")
+        os.mkdir(f".mygit/commits/{commit_num}")
+
+        files = [("/").join(file.split("/")[2:]) for file in glob(".mygit/index/*/*")]
+
+        with open(f".mygit/commits/{commit_num}/COMMIT_MSG","w") as msg:
+            msg.writelines(commit_msg)
+
+        with open(f".mygit/commits/{commit_num}/snapshot.txt","w") as snapshot:
+            for file in files:     
+                snapshot.writelines(file+"\n")
+        
+        current_branch = Path(glob(".mygit/refs/branch/*")[0]).name
+        with open(f".mygit/refs/heads/{current_branch}/latest_commit",'r') as previous_commit:
+            parent_commit = previous_commit.read()
+            
+        with open(f".mygit/commits/{commit_num}/parent","w") as parent:
+            parent.writelines(parent_commit)
+
+        with open(f".mygit/refs/heads/{current_branch}/latest_commit","w") as latest_commit:
+            latest_commit.write(f"{commit_num}")

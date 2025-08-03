@@ -4,47 +4,31 @@ import os
 import mygit_util
 from glob import glob
 import shutil
+import argparse
 
 args = sys.argv[1:]
 
-def raise_error():
-    print("usage: mygit-commit [-a] -m commit-message")
-    exit(1)
+def parse_args():
+    parser = argparse.ArgumentParser(
+        usage="mygit-commit [-a] -m commit-message"
+    )
 
-def usage_check():
-    len_arg = len(args)
+    # Optional -a flag
+    parser.add_argument('-a', action='store_true', help='stage all tracked, modified files')
 
-    if len_arg == 2:
-        if args[0] not in {"-m", "-am"}:
-            raise_error()
-    elif len_arg == 3:
-        if args[0] != "-a" or args[1] != "-m":
-            raise_error()
-    else:
-        raise_error()
+    # Mandatory -m <message> argument
+    parser.add_argument('-m', dest='message', required=True, help='commit message')
+
+    # Parse args
+    args = parser.parse_args()
+
+    return args.a, args.message
     
 def autoadd():
     staged = glob(".mygit/index/*")
     files = [file.split("/")[-1] for file in staged]
     mygit_util.GitUtil.git_add(files)
-        
-
-
-def commit_log():
-    commit_num = len(glob(".mygit/commits/*"))
-    print(f"Committed as commit {commit_num}")
-    os.mkdir(f".mygit/commits/{commit_num}")
-
-    commit_msg = args[1]
-    files = [("/").join(file.split("/")[2:]) for file in glob(".mygit/index/*/*")]
-
-    with open(f".mygit/commits/{commit_num}/COMMIT_MSG","w") as msg:
-        msg.writelines(commit_msg)
-    with open(f".mygit/commits/{commit_num}/snapshot.txt","w") as snapshot:
-        for file in files:
-            snapshot.writelines(file+"\n")
-
-
+                            
 def add_to_HEAD(filename, hash):
     head_path = ".mygit/HEAD"
     new_version = True
@@ -119,16 +103,16 @@ def commit():
 
     #change = clean_head()
     if change:
-        commit_log()
+        mygit_util.GitUtil.commit_log(message)
     else:
         print("nothing to commit")
         return
 
 
 if __name__ == "__main__":
-    usage_check()
+    add,message = parse_args()
     check = mygit_util.ErrorCheck()
     check.commit_check()
-    if args[0] in {"-a","-am"}:
+    if add:
         autoadd()
     commit()
