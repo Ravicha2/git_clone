@@ -70,17 +70,14 @@ def delete_branch(branch_name):
         exit(1)
 
 
-    with open(f".mygit/refs/heads/{current_branch}/HEAD") as current_branch_last_commit:
-        head_last_commit = mygit_util.GitUtil.extract_files(current_branch_last_commit.readlines())
+    with open(f".mygit/refs/heads/{branch_name}/latest_commit") as target_head:
+        target = target_head.read()
+    current_node = mygit_util.GitUtil.current_node()
 
-    with open(f".mygit/refs/heads/{branch_name}/HEAD") as target_branch_last_commit:
-        target_last_commit = mygit_util.GitUtil.extract_files(target_branch_last_commit.readlines())
-    
-    for file,hash_val in target_last_commit.items():
-        current_hash = head_last_commit.get(file)
-        if current_hash != hash_val:
-            print(f"mygit-branch: error: branch '{branch_name}' has unmerged changes")
-            exit(1)
+    ancestors = mygit_util.GitUtil.ancestors(current_node,set(current_node))
+    if target not in ancestors:
+        print(f"mygit-branch: error: branch '{branch_name}' has unmerged changes")
+        exit(1)
 
 
     shutil.rmtree(f".mygit/refs/heads/{branch_name}")
