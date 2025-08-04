@@ -14,7 +14,10 @@ def usage_check(args):
         print("usage: mygit-checkout <branch>")
         exit(1)
 
-def error_check(branch_name):
+def error_check(branch_name:str)->None:
+    """
+    more error handling on checkout
+    """
     if not glob(f".mygit/refs/heads/{branch_name}"):
         print(f"mygit-checkout: error: unknown branch '{branch_name}'")
         exit(1)
@@ -23,7 +26,12 @@ def error_check(branch_name):
         print(f"Already on '{branch_name}'")
         exit(0)
 
-def detect_conflict(target_branch): # only check tracked file
+def detect_conflict(target_branch:str)->None: # only check tracked file
+    """
+        checking if file will be overwritten if checkout
+        basically check if current head differ from target head (file will be overwritten)
+        if yes, is file staged? if not stage, raise warning
+    """
     conflict = False
     conflicted_file = []
     curr_branch_file = set(glob("*"))
@@ -57,12 +65,18 @@ def detect_conflict(target_branch): # only check tracked file
         print(("\n").join(conflicted_file))
         exit(1)
 
-def update_ref(target_branch):
+def update_ref(target_branch:str)->None:
+    """
+    move current branch pointer to new branch
+    """
     current_head = glob(".mygit/refs/branch/*")[0]
     os.remove(current_head)
     Path(f".mygit/refs/branch/{target_branch}").touch()
 
-def update_index(target_branch):
+def update_index(target_branch:str)-> None:
+    """
+    update index to reflect chackout
+    """
     path = f".mygit/refs/heads/{target_branch}/HEAD"
     new_index = dict()
     with open(path,"r") as target:
@@ -89,7 +103,10 @@ def update_index(target_branch):
                 with open(f".mygit/index/{file}/{hash_val}","w") as index_file:
                     index_file.write(objects.read())
 
-def file_diff(src_files:set,dst_files:set,location="dir"):
+def file_diff(src_files:set,dst_files:set,location="dir")->None:
+    """
+    remove file that is not existed on target branch
+    """
     to_delete = src_files - dst_files
     for file in to_delete:
         if location == "dir":
@@ -102,7 +119,10 @@ def file_diff(src_files:set,dst_files:set,location="dir"):
             
 
 
-def switch_to(target_branch):
+def switch_to(target_branch:str)->None:
+    """
+    update index, head, current directory to reflect the checkout
+    """
     print(f"Switched to branch '{target_branch}'")
 
     update_ref(target_branch)

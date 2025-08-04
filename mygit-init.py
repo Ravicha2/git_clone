@@ -4,12 +4,28 @@ import sys
 from pathlib import Path
 import mygit_util
 
+
 def usage_check():
     if sys.argv[1:]:
         print("usage: mygit-init",file=sys.stderr)
         exit(1)
 
-def git_init():
+def git_init()->None:
+    """
+    .mygit
+    ├── HEAD                        (current HEAD)
+    ├── commits                     (commits will record here)
+    ├── index                       (index)
+    ├── objects                     (file content will record here)
+    └── refs                        (reference point, useful when working with branches)
+        ├── branch
+        │   └── trunk               (current branch)
+        └── heads
+            └── trunk
+                ├── HEAD            (latest version of everything on this branch)
+                └── latest_commit   (latest commit, start with -1)
+
+    """
     print("Initialized empty mygit repository in .mygit")
     os.mkdir(".mygit")
     os.mkdir(".mygit/objects")

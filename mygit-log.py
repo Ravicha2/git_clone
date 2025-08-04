@@ -11,9 +11,17 @@ def usage_check():
     except NameError:
         print("usage: mygit-log")
 
-def log():
-    current_node = mygit_util.GitUtil.current_node()
-    ancestor_list = list(mygit_util.GitUtil.ancestors(current_node,set(current_node)))
+def log()-> None:
+    """
+    get all predecessor of a commit from GitUtil.ancestor.
+    then show log message
+    """
+    current_commit = mygit_util.GitUtil.current_node()
+    commit_sets = set()
+    commit_sets.add(current_commit)
+    ancestor_list = list(mygit_util.GitUtil.ancestors(current_commit,commit_sets))
+    ancestor_list = [int(ancestor) for ancestor in ancestor_list]
+
     for commit_num in sorted(ancestor_list,reverse=True):
         if int(commit_num) >= 0:
             with open(".mygit/commits/"+str(commit_num)+"/COMMIT_MSG",'r') as commit_msg:

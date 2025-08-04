@@ -13,4 +13,4 @@ if __name__ == "__main__":
     usage_check()
     check = mygit_util.ErrorCheck()
     check.add_check(files)
-    mygit_util.GitUtil.git_add(files)
+    mygit_util.GitUtil.git_add(files) # actual git add, more in mygit_util

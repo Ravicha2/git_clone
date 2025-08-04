@@ -30,15 +30,28 @@ def parse_args():
     return target, msg
 
 def get_all_files(*commits):
+    """
+    get files (ignore version) from commits,
+    """
     all_files = set()
     for commit in commits:
-        with open(f".mygit/commits/{commit}/snapshot.txt") as files:
-            for file in files:
-                file = file.strip().split("/")[0]
-                all_files.add(file)
+        try:
+            with open(f".mygit/commits/{commit}/snapshot.txt") as files:
+                for file in files:
+                    file = file.strip().split("/")[0]
+                    all_files.add(file)
+        except:
+            print(f"mygit-merge: error: unknown commit '{commit}'")
+            exit(1)
     return all_files
 
 def compare_commit(files,current,target):
+    """
+    check if there are any merge conflicts. Merge conflicts identify by:
+    if current version of file is not the same as target branch version
+        if one of them is identical to branching point version (no change since branch created)
+        then there's no conflict, else raise error
+    """
     branching_point = mygit_util.GitUtil.common_ancestor(current,target)
     conflicted_file = []
     for file in files:
@@ -59,6 +72,24 @@ def compare_commit(files,current,target):
     
 
 def merge_cases(branching_point,current_commit,target_commit):
+    """
+    determine if the merge operation is Fast-forward merge or true merge
+
+    Fast forward merge identfy by
+        0───1       (trunk)
+            └────2  (b1)
+    if merge b1 into trunk, it is fast forward merge, since it is the same as commit on trunk
+        0───1───2
+    and no new commit created
+
+    for true merge
+        0───1────3  (trunk)
+            └────2  (b1)
+    now we need to compare commit 2 and 3 to see if it create any conflict, if no conflict, create new commit
+        0───1────3────4  
+            └────2────└
+    commit 4 is create from merge, this commit will have 2 parents(2,3)
+    """
     branching_point = int(branching_point)
     current_commit = int(current_commit)
     target_commit = int(target_commit)
@@ -73,13 +104,17 @@ def merge_cases(branching_point,current_commit,target_commit):
 
     elif branching_point == target_commit:
         if current_commit > target_commit:
-            print("Already Merged")
+            print("Already up to date")
             exit(0)
     else:
         #print("Branches Diverged — True Merge Required")
         true_merge(branching_point, current_commit, target_commit)
 
 def merge_record(branching_point, current_commit, target_commit):
+    """
+    choose the version to apply when merge. To select the version
+    compare the version on each branch with branching point version, select the version that is different from branching point
+    """
     all_files = get_all_files(current_commit,target_commit)
     merging_file = dict()
     for file in all_files:
@@ -98,6 +133,9 @@ def merge_record(branching_point, current_commit, target_commit):
     return merging_file
 
 def state_check(branching_point, current_commit, target_commit):
+    """
+        checking if there are any unstaged change or uncomitted file left since merge will overwrite index and current directory
+    """
     merging_file = merge_record(branching_point, current_commit, target_commit)
     branching_point = int(branching_point)
     current_commit = int(current_commit)
@@ -132,23 +170,34 @@ def state_check(branching_point, current_commit, target_commit):
 
             if bp_hash == file_hash or bp_hash == merge_version:
                 continue
+
             if not bp_hash:
                 continue
+
             print("mygit-merge: error: can not merge")
             exit(1)
 
 
 def update_index(new_files):
+    """
+    update index to reflect merge, include merge version of file and new file created on each branch
+    """
     for file,hash_val in new_files.items():
         if (index_hash := mygit_util.DiffCheck.get_index_hash(file)) != hash_val:
             if index_hash:
                 shutil.rmtree(f".mygit/index/{file}")
             os.mkdir(f".mygit/index/{file}")
-            with open(f".mygit/objects/{hash_val}","r") as merge_file:
-                with open(f".mygit/index/{file}/{hash_val}","w") as new_index:
-                    new_index.write(merge_file.read())
+            try:
+                with open(f".mygit/objects/{hash_val}","r") as merge_file:
+                    with open(f".mygit/index/{file}/{hash_val}","w") as new_index:
+                        new_index.write(merge_file.read())
+            except:
+                continue
         
 def update_head():
+    """
+    work like mygit-commit, just take data from index to head, but no new file created so no need to touch objects
+    """
     new_head = []
     for file in glob(".mygit/index/*/*"):
         file = ("/").join(file.split("/")[-2:])
@@ -157,6 +206,9 @@ def update_head():
         head.writelines(new_head)
 
 def update_dir():
+    """
+    apply merged version of each file to directory
+    """
     for file in glob(".mygit/index/*/*"):
         file, hash_val = file.split("/")[-2:]
         with open(f".mygit/objects/{hash_val}","r") as stored_content:
@@ -165,6 +217,13 @@ def update_dir():
 
 
 def FF_merge(branching_point, current_commit, target_commit):
+    """
+    as mentioned to concept of Fast-forward merge, now the implementation as followed
+    1. update index
+    2. update head
+    3. update directory
+    update snapshot in commit to include new file (since no new commit created)
+    """
     new_head = merge_record(branching_point,current_commit,target_commit)
     update_index(new_head)
     update_head()
@@ -176,6 +235,13 @@ def FF_merge(branching_point, current_commit, target_commit):
 
 
 def true_merge(branching_point, current_commit, target_commit):
+    """
+    1. update index
+    2. update head
+    3. update directory
+    4. create new commit log
+    5. update latest commit(pointer to parent)
+    """
     new_head = merge_record(branching_point,current_commit,target_commit)
     update_index(new_head)
     update_head()

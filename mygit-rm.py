@@ -30,11 +30,14 @@ def parse_args():
 
     return option, args.filenames
 
-def error_check(filename,option):
+def error_check(filename:str, option:str)-> None:
+    """
+    file removal warning
+    """
     state = mygit_util.DiffCheck.state_check(filename)
     dir_hash = mygit_util.DiffCheck.get_dir_hash(filename)
     index_hash = mygit_util.DiffCheck.get_index_hash(filename)
-    #head_hash = mygit_util.DiffCheck.get_HEAD_hash(filename)
+
     if not index_hash:
         print(f"mygit-rm: error: '{filename}' is not in the mygit repository",file=sys.stderr)
         exit(1)
@@ -50,7 +53,10 @@ def error_check(filename,option):
             print(f"mygit-rm: error: '{filename}' in index is different to both the working file and the repository")
             exit(1)
 
-def remove_from_index(filename):
+def remove_from_index(filename:str)->None:
+    """rm -rf from index, error handling also done during error check but here again just in case
+        anyway, handling it here is not ACID compliant and possibly failed test case if error raised here
+    """
     try:
         shutil.rmtree(f".mygit/index/{filename}")
     except:
@@ -58,7 +64,8 @@ def remove_from_index(filename):
         exit(1)
 
 
-def remove_from_dir(filename):
+def remove_from_dir(filename:str)-> None:
+    """remove file from current directory"""
     current = mygit_util.DiffCheck.get_dir_hash(filename)
 
     if current:

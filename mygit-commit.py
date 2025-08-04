@@ -19,17 +19,22 @@ def parse_args():
     # Mandatory -m <message> argument
     parser.add_argument('-m', dest='message', required=True, help='commit message')
 
-    # Parse args
     args = parser.parse_args()
 
     return args.a, args.message
     
-def autoadd():
+def autoadd()->None:
+    """
+    automatically update everything inside index to directory version
+    """
     staged = glob(".mygit/index/*")
     files = [file.split("/")[-1] for file in staged]
     mygit_util.GitUtil.git_add(files)
                             
-def add_to_HEAD(filename, hash):
+def add_to_HEAD(filename:str, hash:str)->bool:
+    """
+    update current head to reflect change on index
+    """
     head_path = ".mygit/HEAD"
     new_version = True
     
@@ -54,7 +59,10 @@ def add_to_HEAD(filename, hash):
 
     return new_version
     
-def clean_head():
+def clean_head()-> bool:
+    """
+    remove untracked file from head
+    """
     indices = glob(".mygit/index/*/*")
     index_file = set()
 
@@ -81,12 +89,17 @@ def clean_head():
     return new_version
 
 
-def commit():
+def commit()->None:
+    """
+        - handling nothing to commit case
+        - write/delete file from head
+        - save file to object
+    """
     instage = glob(".mygit/index/*")
     if not instage:
         with open(".mygit/HEAD", 'r') as head:
             if not head.read().strip():
-                print("nothing to commit")
+                print("nothing to commit",file=sys.stderr)
                 return
             
     change = clean_head()
@@ -101,7 +114,6 @@ def commit():
             change = True
             shutil.copy(index,f".mygit/objects/{hash_val}")
 
-    #change = clean_head()
     if change:
         mygit_util.GitUtil.commit_log(message)
     else:

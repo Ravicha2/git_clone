@@ -15,6 +15,9 @@ class MyArgumentParser(argparse.ArgumentParser):
         sys.exit(1)
         
 def error_check(delete,branch_name):
+    """
+        check if branch can be add or delete
+    """
     branches = [Path(branch).name for branch in glob(".mygit/refs/heads/*")]
     if not delete:
         if branch_name in branches:
@@ -44,6 +47,11 @@ def parse_args():
     return delete, branch_name
 
 def create_branch(branch_name):
+    """
+    1. save head just in case
+    2. add new branch records
+    3. write current commit  to branch record
+    """
     mygit_util.GitUtil.save_HEAD()
     os.mkdir(f".mygit/refs/heads/{branch_name}")
     Path(f".mygit/refs/heads/{branch_name}/HEAD").touch()
@@ -59,6 +67,10 @@ def create_branch(branch_name):
         new_branch.writelines(head_file)
 
 def delete_branch(branch_name):
+    """
+    1. check if it can be deleted (trunk, current branch or unmerge)
+    2. delete branch
+    """
     current_branch = Path(glob(".mygit/refs/branch/*")[0]).name
     
     if branch_name == "trunk":
